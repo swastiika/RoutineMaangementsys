@@ -1,9 +1,4 @@
--- ============================
--- views_and_proc.sql
--- Creates DAILYROUTINE (if missing), all views, and stored procedure
--- ============================
 
--- DAILYROUTINE table (for overrides / cancellations) if not already present
 CREATE TABLE IF NOT EXISTS DAILYROUTINE (
     daily_routine_id INT AUTO_INCREMENT PRIMARY KEY,
     date DATE NOT NULL,
@@ -203,12 +198,6 @@ LEFT JOIN COURSE c ON d.department_id = c.department_id
 LEFT JOIN SUBJECT s ON c.course_id = s.course_id
 GROUP BY d.department_id, d.name, d.department_code, d.building_no;
 
--- ============================
--- Stored procedure: sp_get_daily_routine(p_date, p_semester, p_teacher_id)
--- Returns the day's routine for a semester (and optionally filtered by teacher),
--- merging explicit DAILYROUTINE overrides and FIXEDROUTINE occurrences while
--- marking FIXEDROUTINE entries Cancelled if a TeacherUnavailability overlaps on that date.
--- ============================
 DROP PROCEDURE IF EXISTS sp_get_daily_routine;
 DELIMITER $$
 CREATE PROCEDURE sp_get_daily_routine(
@@ -217,7 +206,7 @@ CREATE PROCEDURE sp_get_daily_routine(
     IN p_teacher_id VARCHAR(20)
 )
 BEGIN
-    -- 1) Explicit DAILYROUTINE overrides (precedence)
+
     SELECT
         dr.date AS date,
         dr.start_time AS start_time_raw,

@@ -5,25 +5,22 @@ from tabulate import tabulate
 import os
 import sys
 
-# ===============================
-# DB Connection - update credentials if needed
-# ===============================
 try:
     db = mysql.connector.connect(
         host="localhost",
-        user="root",      # change to your MySQL user
-        password="PUL079bei",  # change to your MySQL password
+        user="root",      
+        password="PUL079bei", 
         database="RoutineManagement"
     )
     cursor = db.cursor(dictionary=True)
-    print("✅ Database connected successfully!")
+    print(" Database connected successfully!")
 except mysql.connector.Error as err:
-    print(f"❌ Database connection failed: {err}")
+    print(f" Database connection failed: {err}")
     sys.exit(1)
 
-# ===============================
+
 # Utility Functions
-# ===============================
+
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
@@ -33,7 +30,7 @@ def print_header(title):
     print("="*60)
 
 def print_menu(options):
-    print("\n📋 MENU:")
+    print("\n MENU:")
     for i, option in enumerate(options, 1):
         print(f"  {i}. {option}")
     print("  0. Back to Main Menu")
@@ -46,26 +43,25 @@ def get_choice(max_choice):
             if 0 <= choice <= max_choice:
                 return choice
             else:
-                print(f"❌ Please enter a number between 0 and {max_choice}")
+                print(f"Please enter a number between 0 and {max_choice}")
         except ValueError:
-            print("❌ Please enter a valid number")
+            print(" Please enter a valid number")
 
 def print_table(data, title="DATA"):
     if data:
-        print(f"\n📊 {title}:")
+        print(f"\n{title}:")
         print(tabulate(data, headers="keys", tablefmt="grid"))
     else:
-        print(f"\n❌ No {title.lower()} found!")
+        print(f"\n No {title.lower()} found!")
 
 def pause():
-    input("\n📱 Press Enter to continue...")
+    input("\n Press Enter to continue...")
 
-# ===============================
+
 # Student Functions
-# ===============================
 def student_login():
     print_header("Student Login")
-    student_id = input("🆔 Enter your Student ID: ").strip()
+    student_id = input("Enter your Student ID: ").strip()
     
     cursor.execute("SELECT * FROM StudentDetailsView WHERE student_id = %s", (student_id,))
     student = cursor.fetchone()
@@ -74,9 +70,9 @@ def student_login():
         print("❌ Student not found!")
         return None
     
-    print(f"\n✅ Welcome, {student['student_name']}!")
-    print(f"📚 Department: {student['department_name']} ({student['department_code']})")
-    print(f"📖 Semester: {student['semester_name']}")
+    print(f"\nWelcome, {student['student_name']}!")
+    print(f"Department: {student['department_name']} ({student['department_code']})")
+    print(f"Semester: {student['semester_name']}")
     return student
 
 def student_dashboard(student):
@@ -178,7 +174,7 @@ def view_week_schedule(semester_name):
         current_date = start_of_week + timedelta(days=i)
         day_name = current_date.strftime('%A')
         
-        print(f"\n📅 {day_name}, {current_date}")
+        print(f"\n{day_name}, {current_date}")
         print("-" * 40)
         
         # Call stored proc for this date & semester
@@ -192,7 +188,7 @@ def view_week_schedule(semester_name):
                 status_icon = "✅" if class_info['status'] == 'Scheduled' else "❌" if class_info['status'] == 'Cancelled' else "🔄"
                 print(f"  {status_icon} {class_info['start_time']} - {class_info['end_time']} | {class_info['subject_name']} | {class_info['teacher_name']} | {class_info['classroom']}")
         else:
-            print("  🎉 No classes today!")
+            print(" No classes today!")
 
 def view_student_profile(student_id):
     print_header("My Profile")
@@ -216,18 +212,18 @@ def view_student_profile(student_id):
 # ===============================
 def teacher_login():
     print_header("Teacher Login")
-    teacher_id = input("🆔 Enter your Teacher ID: ").strip()
+    teacher_id = input("Enter your Teacher ID: ").strip()
     
     cursor.execute("SELECT * FROM TeacherDetailsView WHERE teacher_id = %s", (teacher_id,))
     teacher = cursor.fetchone()
     
     if not teacher:
-        print("❌ Teacher not found!")
+        print(" Teacher not found!")
         return None
     
-    print(f"\n✅ Welcome, {teacher['teacher_name']}!")
-    print(f"🏢 Department: {teacher['department_name']} ({teacher['department_code']})")
-    print(f"📚 Subjects Teaching: {teacher['subjects_taught']}")
+    print(f"\n Welcome, {teacher['teacher_name']}!")
+    print(f"department: {teacher['department_name']} ({teacher['department_code']})")
+    print(f" Subjects Teaching: {teacher['subjects_taught']}")
     return teacher
 
 def teacher_dashboard(teacher):
@@ -350,7 +346,7 @@ def view_teacher_weekly_schedule(teacher_id):
                 status_icon = "✅" if r['status'] == 'Scheduled' else "❌"
                 print(f"  {status_icon} {r['start_time']} - {r['end_time']} | {r['subject_name']} | {r['classroom']}")
         else:
-            print("  🎉 No classes on this day!")
+            print("No classes on this day!")
 
 def view_teacher_subjects(teacher_id):
     print_header("My Subjects")
@@ -369,15 +365,15 @@ def mark_teacher_unavailability(teacher_id):
     print_header("Mark Unavailability")
     
     try:
-        date_str = input("📅 Enter date (YYYY-MM-DD) or press Enter for today: ").strip()
+        date_str = input("Enter date (YYYY-MM-DD) or press Enter for today: ").strip()
         if not date_str:
             date = datetime.today().date()
         else:
             date = datetime.strptime(date_str, '%Y-%m-%d').date()
         
-        start_time = input("⏰ Enter start time (HH:MM): ").strip() + ":00"
-        end_time = input("⏰ Enter end time (HH:MM): ").strip() + ":00"
-        reason = input("📝 Enter reason: ").strip()
+        start_time = input("Enter start time (HH:MM): ").strip() + ":00"
+        end_time = input("Enter end time (HH:MM): ").strip() + ":00"
+        reason = input("Enter reason: ").strip()
         
         # Insert unavailability
         cursor.execute("""
@@ -609,7 +605,7 @@ def view_all_routines():
 def search_student():
     print_header("Search Student")
     
-    search_term = input("🔍 Enter student name or ID to search: ").strip()
+    search_term = input("Enter student name or ID to search: ").strip()
     
     cursor.execute("""
         SELECT * FROM StudentDetailsView 
@@ -623,7 +619,7 @@ def search_student():
 def search_teacher():
     print_header("Search Teacher")
     
-    search_term = input("🔍 Enter teacher name or ID to search: ").strip()
+    search_term = input("Enter teacher name or ID to search: ").strip()
     
     cursor.execute("""
         SELECT * FROM TeacherDetailsView 
@@ -660,14 +656,14 @@ def view_department_info(department_code):
 def main_menu():
     while True:
         clear_screen()
-        print("🎓" + "="*58 + "🎓")
-        print("  🏫 COMPREHENSIVE ROUTINE MANAGEMENT SYSTEM 🏫")
-        print("🎓" + "="*58 + "🎓")
-        print("\n🔐 LOGIN OPTIONS:")
-        print("  1. 👨‍🎓 Student Login")
-        print("  2. 👨‍🏫 Teacher Login") 
-        print("  3. 👁️  Information Viewer")
-        print("  4. ❌ Exit System")
+        print( "="*58 + "🎓")
+        print(" COMPREHENSIVE ROUTINE MANAGEMENT SYSTEM 🏫")
+        print("" + "="*58 + "🎓")
+        print("\n LOGIN OPTIONS:")
+        print("  1.  Student Login")
+        print("  2. Teacher Login") 
+        print("  3. Information Viewer")
+        print("  4. Exit System")
         print("-" * 60)
         
         choice = get_choice(4)
@@ -683,26 +679,26 @@ def main_menu():
         elif choice == 3:
             viewer_dashboard()
         elif choice == 4:
-            print("\n👋 Thank you for using Routine Management System!")
+            print("\nThank you for using Routine Management System!")
             print("🎓 Have a great day!")
             break
         elif choice == 0:
-            print("\n👋 Thank you for using Routine Management System!")
-            print("🎓 Have a great day!")
+            print("\nThank you for using Routine Management System!")
+            print(" Have a great day!")
             break
 
 def main():
     try:
         main_menu()
     except KeyboardInterrupt:
-        print("\n\n👋 System interrupted. Goodbye!")
+        print("\n\n System interrupted. Goodbye!")
     except Exception as e:
-        print(f"\n❌ An error occurred: {e}")
+        print(f"\nAn error occurred: {e}")
     finally:
         if db.is_connected():
             cursor.close()
             db.close()
-            print("🔌 Database connection closed.")
+            print(" Database connection closed.")
 
 if __name__ == "__main__":
     main()
