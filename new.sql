@@ -85,22 +85,6 @@ CREATE TABLE FIXEDROUTINE (
     FOREIGN KEY (semester_id) REFERENCES SEMESTER(semester_id)
 );
 
--- Daily routine (overrides)
-CREATE TABLE DAILYROUTINE (
-    daily_routine_id INT AUTO_INCREMENT PRIMARY KEY,
-    date DATE NOT NULL,
-    subject_id INT,
-    teacher_id VARCHAR(20), -- Updated to match TEACHER.teacher_id
-    class_id INT,
-    semester_id INT,
-    start_time TIME,
-    end_time TIME,
-    status ENUM('Scheduled','Rescheduled','Cancelled') DEFAULT 'Scheduled',
-    FOREIGN KEY (subject_id) REFERENCES SUBJECT(subject_id),
-    FOREIGN KEY (teacher_id) REFERENCES TEACHER(teacher_id),
-    FOREIGN KEY (class_id) REFERENCES CLASS(class_id),
-    FOREIGN KEY (semester_id) REFERENCES SEMESTER(semester_id)
-);
 
 -- Teacher unavailability
 CREATE TABLE TeacherUnavailability (

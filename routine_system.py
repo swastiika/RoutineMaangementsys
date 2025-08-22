@@ -1,3 +1,4 @@
+# routine.py
 import mysql.connector
 from datetime import datetime, timedelta
 from tabulate import tabulate
@@ -5,7 +6,7 @@ import os
 import sys
 
 # ===============================
-# DB Connection
+# DB Connection - update credentials if needed
 # ===============================
 try:
     db = mysql.connector.connect(
@@ -119,35 +120,29 @@ def student_dashboard(student):
 def view_daily_schedule(semester_name):
     today = datetime.today().date()
     day_name = today.strftime('%A')
-    
     print_header(f"Today's Schedule - {today} ({day_name})")
-    
-    # Check for daily routine overrides first
-    cursor.execute("""
-        SELECT * FROM DailyRoutineView 
-        WHERE date = %s AND semester_name = %s
-        ORDER BY start_time
-    """, (today, semester_name))
-    
-    daily_routine = cursor.fetchall()
-    
-    if daily_routine:
-        print_table(daily_routine, "TODAY'S SCHEDULE (Modified)")
+
+    # Call stored procedure: pass p_teacher_id = NULL to fetch all teachers
+    cursor.execute("CALL sp_get_daily_routine(%s, %s, %s)", (today, semester_name, None))
+    rows = cursor.fetchall()
+    # consume remaining resultsets
+    while cursor.nextset():
+        pass
+
+    if rows:
+        display = []
+        for r in rows:
+            display.append({
+                'start_time': r.get('start_time'),
+                'end_time': r.get('end_time'),
+                'subject_name': r.get('subject_name'),
+                'teacher_name': r.get('teacher_name'),
+                'classroom': r.get('classroom'),
+                'status': r.get('status')
+            })
+        print_table(display, "TODAY'S SCHEDULE")
     else:
-        # Show regular weekly routine
-        cursor.execute("""
-            SELECT day_of_week, start_time, end_time, subject_name, 
-                   teacher_name, classroom, department_name
-            FROM WeeklyRoutineView 
-            WHERE day_of_week = %s AND semester_name = %s
-            ORDER BY start_time
-        """, (day_name, semester_name))
-        
-        routine = cursor.fetchall()
-        if routine:
-            print_table(routine, f"TODAY'S REGULAR SCHEDULE ({day_name})")
-        else:
-            print(f"\n🎉 No classes scheduled for today ({day_name})!")
+        print(f"\n🎉 No classes scheduled for today ({day_name})!")
 
 def view_weekly_routine(semester_name):
     print_header(f"Weekly Routine - {semester_name}")
@@ -186,35 +181,18 @@ def view_week_schedule(semester_name):
         print(f"\n📅 {day_name}, {current_date}")
         print("-" * 40)
         
-        # Check daily overrides first
-        cursor.execute("""
-            SELECT start_time, end_time, subject_name, teacher_name, classroom, status
-            FROM DailyRoutineView 
-            WHERE date = %s AND semester_name = %s
-            ORDER BY start_time
-        """, (current_date, semester_name))
-        
-        daily = cursor.fetchall()
-        
-        if daily:
-            for class_info in daily:
+        # Call stored proc for this date & semester
+        cursor.execute("CALL sp_get_daily_routine(%s, %s, %s)", (current_date, semester_name, None))
+        daily_rows = cursor.fetchall()
+        while cursor.nextset():
+            pass
+
+        if daily_rows:
+            for class_info in daily_rows:
                 status_icon = "✅" if class_info['status'] == 'Scheduled' else "❌" if class_info['status'] == 'Cancelled' else "🔄"
                 print(f"  {status_icon} {class_info['start_time']} - {class_info['end_time']} | {class_info['subject_name']} | {class_info['teacher_name']} | {class_info['classroom']}")
         else:
-            # Show regular routine
-            cursor.execute("""
-                SELECT start_time, end_time, subject_name, teacher_name, classroom
-                FROM WeeklyRoutineView 
-                WHERE day_of_week = %s AND semester_name = %s
-                ORDER BY start_time
-            """, (day_name, semester_name))
-            
-            regular = cursor.fetchall()
-            if regular:
-                for class_info in regular:
-                    print(f"  📚 {class_info['start_time']} - {class_info['end_time']} | {class_info['subject_name']} | {class_info['teacher_name']} | {class_info['classroom']}")
-            else:
-                print("  🎉 No classes today!")
+            print("  🎉 No classes today!")
 
 def view_student_profile(student_id):
     print_header("My Profile")
@@ -295,45 +273,84 @@ def view_teacher_today_classes(teacher_id):
     day_name = today.strftime('%A')
     
     print_header(f"Today's Classes - {today} ({day_name})")
-    
+
+    # find semesters where teacher has classes (so procedure can be called with semester names)
     cursor.execute("""
-        SELECT start_time, end_time, subject_name, classroom, 
-               semester_name, course_name
-        FROM WeeklyRoutineView 
-        WHERE teacher_id = %s AND day_of_week = %s
-        ORDER BY start_time
-    """, (teacher_id, day_name))
-    
-    classes = cursor.fetchall()
-    
-    if classes:
-        print_table(classes, "TODAY'S CLASSES")
+        SELECT DISTINCT sem.semester_name
+        FROM FIXEDROUTINE fr
+        JOIN SEMESTER sem ON fr.semester_id = sem.semester_id
+        WHERE fr.teacher_id = %s
+    """, (teacher_id,))
+    sem_rows = cursor.fetchall()
+    semesters = [r['semester_name'] for r in sem_rows] if sem_rows else []
+
+    combined = []
+    for sem_name in semesters:
+        cursor.execute("CALL sp_get_daily_routine(%s, %s, %s)", (today, sem_name, teacher_id))
+        rows = cursor.fetchall()
+        while cursor.nextset():
+            pass
+        for r in rows:
+            combined.append(r)
+
+    if combined:
+        combined.sort(key=lambda x: x.get('start_time_raw') or x.get('start_time'))
+        display_rows = []
+        for r in combined:
+            display_rows.append({
+                'start_time': r.get('start_time'),
+                'end_time': r.get('end_time'),
+                'subject_name': r.get('subject_name'),
+                'classroom': r.get('classroom'),
+                'status': r.get('status')
+            })
+        print_table(display_rows, "TODAY'S CLASSES")
     else:
         print(f"\n🎉 No classes scheduled for today!")
 
 def view_teacher_weekly_schedule(teacher_id):
     print_header("My Weekly Schedule")
     
+    # get semesters
     cursor.execute("""
-        SELECT day_of_week, start_time, end_time, subject_name, 
-               classroom, semester_name, course_name
-        FROM WeeklyRoutineView 
-        WHERE teacher_id = %s
-        ORDER BY 
-            CASE day_of_week
-                WHEN 'Sunday' THEN 1
-                WHEN 'Monday' THEN 2
-                WHEN 'Tuesday' THEN 3
-                WHEN 'Wednesday' THEN 4
-                WHEN 'Thursday' THEN 5
-                WHEN 'Friday' THEN 6
-                WHEN 'Saturday' THEN 7
-            END,
-            start_time
+        SELECT DISTINCT sem.semester_name
+        FROM FIXEDROUTINE fr
+        JOIN SEMESTER sem ON fr.semester_id = sem.semester_id
+        WHERE fr.teacher_id = %s
     """, (teacher_id,))
-    
-    schedule = cursor.fetchall()
-    print_table(schedule, "WEEKLY SCHEDULE")
+    sem_rows = cursor.fetchall()
+    semesters = [r['semester_name'] for r in sem_rows] if sem_rows else []
+
+    week_days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+    today = datetime.today().date()
+
+    for day in week_days:
+        # find nearest date with that weekday (starting from today)
+        date_for_day = None
+        for offset in range(0, 7):
+            candidate = today + timedelta(days=offset)
+            if candidate.strftime('%A') == day:
+                date_for_day = candidate
+                break
+
+        print(f"\n📅 {day} ({date_for_day})")
+        print("-" * 40)
+
+        combined = []
+        for sem_name in semesters:
+            cursor.execute("CALL sp_get_daily_routine(%s, %s, %s)", (date_for_day, sem_name, teacher_id))
+            rows = cursor.fetchall()
+            while cursor.nextset():
+                pass
+            combined.extend(rows)
+
+        if combined:
+            combined.sort(key=lambda x: x.get('start_time_raw') or x.get('start_time'))
+            for r in combined:
+                status_icon = "✅" if r['status'] == 'Scheduled' else "❌"
+                print(f"  {status_icon} {r['start_time']} - {r['end_time']} | {r['subject_name']} | {r['classroom']}")
+        else:
+            print("  🎉 No classes on this day!")
 
 def view_teacher_subjects(teacher_id):
     print_header("My Subjects")
@@ -368,19 +385,22 @@ def mark_teacher_unavailability(teacher_id):
             VALUES (%s, %s, %s, %s, %s)
         """, (teacher_id, date, start_time, end_time, reason))
         
-        # Find and cancel affected classes
+        # Find affected fixed classes for that day & teacher (overlapping times)
         day_name = date.strftime('%A')
         cursor.execute("""
             SELECT * FROM FIXEDROUTINE
             WHERE teacher_id = %s AND day_of_week = %s
-            AND ((start_time BETWEEN %s AND %s) OR 
+            AND (
+                 (start_time BETWEEN %s AND %s) OR 
                  (end_time BETWEEN %s AND %s) OR 
-                 (%s BETWEEN start_time AND end_time))
+                 (%s BETWEEN start_time AND end_time)
+            )
         """, (teacher_id, day_name, start_time, end_time, start_time, end_time, start_time))
         
         affected_classes = cursor.fetchall()
         
         for cls in affected_classes:
+            # insert a DAILYROUTINE cancelled row
             cursor.execute("""
                 INSERT INTO DAILYROUTINE (date, subject_id, teacher_id, class_id, 
                                         semester_id, start_time, end_time, status)
@@ -426,7 +446,7 @@ def view_teacher_workload(teacher_id):
         print(f"  📆 Teaching Days: {workload['teaching_days']}")
 
 # ===============================
-# Viewer Functions
+# Viewer Functions (mostly unchanged)
 # ===============================
 def viewer_dashboard():
     while True:

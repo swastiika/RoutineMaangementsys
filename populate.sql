@@ -53,7 +53,18 @@ INSERT INTO SUBJECT (subject_name, course_id, teacher_id) VALUES
 ('Concrete Design', 5, 'teacherbce1'),
 ('Digital Logic', 6, 'teacherbee1');
 
-
+-- Insert Sample Students
+INSERT INTO STUDENT (student_id, first_name, last_name, address, phone_number, guardian_name, department_id, semester_id) VALUES
+('079bei005', 'Sujan', 'Shrestha', 'Kathmandu', '9841000001', 'Ram Shrestha', 1, 1),
+('079bct002', 'Pratik', 'Karki', 'Lalitpur', '9841000002', 'Sita Karki', 2, 1),
+('079bei007', 'Bibek', 'Ghimire', 'Bhaktapur', '9841000003', 'Hari Ghimire', 1, 2),
+('079bct009', 'Aashish', 'Basnet', 'Pokhara', '9841000004', 'Maya Basnet', 2, 2),
+('079bce003', 'Santoshi', 'Sharma', 'Biratnagar', '9841000005', 'Ramesh Sharma', 3, 1),
+('079bee001', 'Pramila', 'Tamang', 'Dharan', '9841000006', 'Gopal Tamang', 4, 1),
+('079bei010', 'Rupesh', 'Thapa', 'Butwal', '9841000007', 'Manju Thapa', 1, 3),
+('079bct011', 'Sandhya', 'Shrestha', 'Janakpur', '9841000008', 'Bishnu Shrestha', 2, 3),
+('079bce005', 'Rajan', 'Yadav', 'Birgunj', '9841000009', 'Sunita Yadav', 3, 2),
+('079bee003', 'Sushil', 'Lama', 'Hetauda', '9841000010', 'Kamal Lama', 4, 2);
 
 INSERT INTO FIXEDROUTINE (subject_id, teacher_id, class_id, semester_id, day_of_week, start_time, end_time) VALUES
 
